@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Path
+from fastapi import FastAPI, Path, HTTPException
 from typing import List, Annotated
 from pydantic import BaseModel
 
@@ -31,21 +31,26 @@ async def create_user(username:str = Path(min_length=5, max_length=20, descripti
 
 @app.put('/user/{user_id}/{username}/{age}')
 async def update_user(
-        username: Annotated[str, Path(min_length=5, max_length=20, description="Enter username",
-                                                     example="UrbanUser")],
-        user_id: str = Path(ge=1, le=100, description="Enter User ID", example="25"),
-        age: int = Path(ge=18, le=120, description="Enter age", example="24")) -> User:
-    if user_id not in users:
-        raise HTTPException(status_code=404, detail="User not found")
-    users[user_id] = f"Имя: {username}, возраст: {age}"
-    return {"user_id": user_id, "username": username, "age": age}
+        username: str = Path(min_length=5, max_length=20, description="Enter username",
+                                                     example="UrbanUser"),
+        user_id: int = Path(ge=1, le=100, description="Enter User ID", example=1),
+        age: int = Path(ge=18, le=120, description="Enter age", example="24")
+) -> User:
+    user = next ((user for user in users if user.id == user_id), None)
+    if not user:
+        raise HTTPException (status_code=404, detail="User not found")
+    # Обновляем информацию о пользователе
+    user.username = username
+    user.age = age
+    return user
 
 @app.delete('/user/{user_id}')
-async def del_user(user_id: str = Path(ge=1, le=100, description="Enter User ID", example="25"),) -> str:
+async def del_user(user_id: int) -> str:
     try:
         users.pop(user_id)
         return f'User {user_id} was deleted'
     except IndexError:
         raise HTTPException(status_code=404, detail="User not found")
+
 
 
